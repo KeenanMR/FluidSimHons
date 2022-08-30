@@ -1,0 +1,161 @@
+﻿//Kernel Declarations
+#pragma kernel X
+#pragma kernel Y
+#pragma kernel F
+
+//Struct data for the X-Direction of the algorithm
+ struct dataLaxW_X
+{
+    float HXValue;
+    float UXValue;
+    float VXValue;
+
+    float2 HValues;
+    float2 UValues;
+    float2 VValues;
+
+};
+
+ //Struct data for the Y-Direction of the algorithm
+ struct dataLaxW_Y
+{
+    float HYValue;
+    float UYValue;
+    float VYValue;
+
+    float2 HValues;
+    float2 UValues;
+    float2 VValues;
+
+};
+
+ //Struct data for the final half of the algorithm
+ struct dataLaxW_F
+{
+    float HValue;
+    float UValue;
+    float VValue;
+
+    float2 UXValues;
+    float2 HXValues;
+    float2 VYValues;
+    float2 UYValues;
+    float2 HYValues;
+    float2 VXValues;
+};
+
+
+ //Data buffer arrays 
+RWStructuredBuffer<dataLaxW_X> xDatas;
+RWStructuredBuffer<dataLaxW_Y> yDatas;
+RWStructuredBuffer<dataLaxW_F> fDatas;
+
+
+//X Direction algorithm
+[numthreads(128, 1, 1)]
+void X(uint3 id : SV_DispatchThreadID)
+{
+    float alpha = 0.01f;
+    float g = 9.8f;
+
+    dataLaxW_X data = xDatas[id.x];
+
+    //HX
+    data.HXValue = (data.HValues.x + data.HValues.y) / 2;
+    data.HXValue = data.HXValue - alpha * (data.UValues.x - data.UValues.y);
+
+    //UX
+
+    data.UXValue = (data.UValues.x + data.UValues.y) / 2;
+
+    float f1 = (data.UValues.x * data.UValues.x) / data.HValues.x + (g * 0.5f * (data.HValues.x * data.HValues.x));
+    float f2 = (data.UValues.y * data.UValues.y) / data.HValues.y + (g * 0.5f * (data.HValues.y * data.HValues.y));
+
+    data.UXValue = data.UXValue - alpha * (f1 - f2);
+
+
+    //VX
+    data.VXValue = (data.VValues.x + data.VValues.y) / 2;
+
+    float f3 = data.UValues.x * data.VValues.x / data.HValues.x;
+    float f4 = data.UValues.y * data.VValues.y / data.HValues.y;
+
+    data.VXValue = data.VXValue - alpha * (f3 - f4);
+
+    xDatas[id.x] = data;
+
+}
+
+
+//Y Direction algorithm
+[numthreads(128, 1, 1)]
+void Y(uint3 id : SV_DispatchThreadID)
+{
+    float alpha = 0.01f;
+    float g = 9.8f;
+
+    dataLaxW_Y data = yDatas[id.x];
+
+    //HY
+    data.HYValue = (data.HValues.x + data.HValues.y) / 2;
+    data.HYValue = data.HYValue - alpha * (data.VValues.x - data.VValues.y);
+
+
+    //UY
+    data.UYValue = (data.UValues.x + data.UValues.y) / 2;
+
+    float f1 = data.VValues.x * data.UValues.x / data.HValues.x;
+    float f2 = data.VValues.y * data.UValues.y / data.HValues.y;
+
+    data.UYValue = data.UYValue - alpha * (f1 - f2);
+
+
+    //VY
+
+    data.VYValue = (data.VValues.x + data.VValues.y) / 2;
+
+    float f3 = (data.VValues.x * data.VValues.x) / data.HValues.x + (g * 0.5f * (data.HValues.x * data.HValues.x));
+    float f4 = (data.VValues.y * data.VValues.y) / data.HValues.y + (g * 0.5f * (data.HValues.y * data.HValues.y));
+
+    data.VYValue = data.VYValue - alpha * (f3 - f4);
+
+    yDatas[id.x] = data;
+}
+
+//Final half algorithm
+[numthreads(128, 1, 1)]
+void F(uint3 id : SV_DispatchThreadID)
+{
+
+    float beta = 0.02f;
+    float g = 9.8f;
+
+    dataLaxW_F data = fDatas[id.x];
+
+    //H
+    data.HValue = data.HValue - (beta * (data.UXValues.x - data.UXValues.y)) - (beta * (data.VYValues.x - data.VYValues.y));
+
+
+    //U
+    float f1 = (data.UXValues.x* data.UXValues.x) / data.HXValues.x + (g * 0.5f *(data.HXValues.x* data.HXValues.x));
+    float f2 = (data.UXValues.y * data.UXValues.y) / data.HXValues.y + (g * 0.5f * (data.HXValues.y * data.HXValues.y));
+    float f3 = data.VYValues.x * data.UYValues.x / data.HYValues.x;
+    float f4 = data.VYValues.y * data.UYValues.y / data.HYValues.y;
+
+    data.UValue = data.UValue - (beta * (f1 - f2)) - (beta * (f3 - f4));
+
+
+    //V
+    float f5 = data.UXValues.x * data.VXValues.x / data.HXValues.x;
+    float f6 = data.UXValues.y * data.VXValues.y / data.HXValues.y;
+    float f7 = (data.VYValues.x* data.VYValues.x) / data.HYValues.x + (g * 0.5f * (data.HYValues.x* data.HYValues.x));
+    float f8 = (data.VYValues.y * data.VYValues.y) / data.HYValues.y + (g * 0.5f * (data.HYValues.y * data.HYValues.y));
+
+    data.VValue = data.VValue - (beta * (f5 - f6)) - (beta * (f7 - f8));
+
+    fDatas[id.x] = data;
+}
+
+
+
+

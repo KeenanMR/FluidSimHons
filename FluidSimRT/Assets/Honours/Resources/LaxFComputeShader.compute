@@ -1,0 +1,57 @@
+﻿
+#pragma kernel CSMain
+
+struct dataLaxF
+{
+    //Input Data
+    float4 heightData;
+    float4 fUData;
+    float4 fVData;
+    float4 uData;
+    float4 vData;
+
+    //Output Data
+     float outputHeight;
+     float outputFU;
+     float outputFV;
+     float outputU;
+     float outputV;
+};
+
+
+//Data struct arrays
+RWStructuredBuffer<dataLaxF> vDatas;
+
+//Kernel for Lax Friedrichs
+[numthreads(128,1,1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float alpha = 0.02f;
+    float g = 9.8f;
+    dataLaxF data = vDatas[id.x]; 
+
+    //Height
+    data.outputHeight = 0.25f * (data.heightData.x + data.heightData.y + data.heightData.z + data.heightData.a) - alpha * (data.fUData.x - data.fUData.y) - alpha * (data.fVData.z - data.fVData.a);
+
+    //FU
+    data.outputFU = 0.25f * (data.fUData.x + data.fUData.y + data.fUData.z + data.fUData.a);
+    data.outputFU = data.outputFU - alpha * ((data.heightData.x * (data.uData.x* data.uData.x) + (0.5f * g * (data.heightData.x* data.heightData.x))) - (data.heightData.y * (data.uData.y* data.uData.y) + (0.5f * g * (data.heightData.y* data.heightData.y))));
+    data.outputFU = data.outputFU - alpha * (data.heightData.z * data.vData.z * data.uData.z - data.heightData.a * data.vData.a * data.uData.a);
+
+    //FV
+    data.outputFV = 0.25f * (data.fVData.x + data.fVData.y + data.fVData.z + data.fVData.a);
+    data.outputFV = data.outputFV - alpha * (data.heightData.x * data.vData.x * data.uData.x - data.heightData.y * data.vData.y * data.uData.y);
+    data.outputFV = data.outputFV - alpha * ((data.heightData.z * (data.vData.z* data.vData.z) + (0.5f * g *(data.heightData.z* data.heightData.z))) - (data.heightData.a * (data.vData.a* data.vData.a) + (0.5f * g * (data.heightData.a* data.heightData.a))));
+
+    //U
+    data.outputU = data.outputFU / data.outputHeight;
+
+    //V
+    data.outputV = data.outputFV / data.outputHeight;
+
+    vDatas[id.x] = data;
+    
+    
+}
+
+

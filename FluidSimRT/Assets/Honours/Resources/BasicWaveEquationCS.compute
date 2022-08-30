@@ -1,0 +1,29 @@
+﻿
+#pragma kernel CSMain
+
+//Data struct
+struct VertexData
+{
+    float height;
+    float posX;
+    float posY;
+    float negX;
+    float negY;
+    float prevHeight;
+};
+
+//Data struct arrays
+RWStructuredBuffer<VertexData> vDatas;
+
+//Kernel for wave equation
+[numthreads(128,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    VertexData data = vDatas[id.x];
+
+    //Height
+    data.height = data.height + (0.25 * (data.posX + data.negX + data.posY + data.negY)) - data.prevHeight;
+
+    vDatas[id.x].height = data.height;
+    
+}
